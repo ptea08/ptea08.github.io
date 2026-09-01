@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bootstrapped Watershed &mdash; Few-Shot Instance ZooScan Segmentation</title>
+
+<meta name="description" content="Few-shot instance segmentation for ZooScan plankton imagery, trained from three annotated crops. Marine Vision Workshop, ECCV 2026.">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="Bootstrapped Watershed">
+<meta property="og:description" content="Instance segmentation of plankton scans, learned from three annotated crops. Marine Vision Workshop, ECCV 2026.">
+<meta property="og:image" content="https://ptea08.github.io/bw-watershed/pipeline.png">
+<meta property="og:url" content="https://ptea08.github.io/bw-watershed/">
+<meta name="twitter:card" content="summary_large_image">
+
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><circle cx='8' cy='8' r='6' fill='none' stroke='%231a1a1a' stroke-width='2'/></svg>">
+
+<style>
+  :root {
+    --fg:     #16181d;
+    --mute:   #656b76;
+    --faint:  #8b909b;
+    --line:   #e4e6ea;
+    --bg:     #ffffff;
+    --panel:  #fafbfc;
+    --accent: #14532d;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fg:     #e6e8ec;
+      --mute:   #9aa0ac;
+      --faint:  #767c88;
+      --line:   #262a31;
+      --bg:     #0f1115;
+      --panel:  #161920;
+      --accent: #7dd3a0;
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    margin: 0;
+    padding: 5rem 1.5rem 4rem;
+    background: var(--bg);
+    color: var(--fg);
+    font: 400 17px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI",
+          Inter, Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  main { max-width: 46rem; margin: 0 auto; }
+
+  /* ---------- header ---------- */
+
+  .venue {
+    display: inline-block;
+    margin: 0 0 1.1rem;
+    padding: .28rem .7rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-size: .74rem;
+    font-weight: 600;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: var(--mute);
+  }
+
+  h1 {
+    margin: 0 0 .5rem;
+    font-size: 2.35rem;
+    font-weight: 650;
+    letter-spacing: -.025em;
+    line-height: 1.15;
+  }
+
+  .tagline {
+    margin: 0 0 1.8rem;
+    color: var(--mute);
+    font-size: 1.12rem;
+    line-height: 1.5;
+  }
+
+  .authors {
+    margin: 0 0 .2rem;
+    font-size: .97rem;
+  }
+  .affil {
+    margin: 0 0 2.2rem;
+    font-size: .9rem;
+    color: var(--mute);
+  }
+
+  /* ---------- links ---------- */
+
+  .links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .55rem;
+    margin: 0 0 1rem;
+  }
+  .links a {
+    padding: .52rem 1.15rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    color: var(--fg);
+    text-decoration: none;
+    font-size: .92rem;
+    font-weight: 500;
+    transition: border-color .15s ease, background .15s ease;
+  }
+  .links a:hover { border-color: var(--fg); background: var(--panel); }
+  .links a[aria-disabled="true"] {
+    color: var(--faint);
+    pointer-events: none;
+    border-style: dashed;
+    font-weight: 400;
+  }
+
+  .release-note {
+    margin: 0 0 3.5rem;
+    font-size: .85rem;
+    color: var(--faint);
+  }
+
+  /* ---------- headline numbers ---------- */
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    margin: 0 0 3.5rem;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .stat {
+    padding: 1.3rem 1rem;
+    background: var(--bg);
+    text-align: center;
+  }
+  .stat b {
+    display: block;
+    font-size: 1.85rem;
+    font-weight: 650;
+    letter-spacing: -.02em;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+  }
+  .stat span {
+    display: block;
+    margin-top: .3rem;
+    font-size: .78rem;
+    line-height: 1.4;
+    color: var(--mute);
+  }
+  @media (max-width: 34rem) {
+    .stats { grid-template-columns: 1fr; }
+  }
+
+  /* ---------- sections ---------- */
+
+  section { margin: 0 0 3.5rem; }
+
+  h2 {
+    margin: 0 0 1rem;
+    font-size: .76rem;
+    font-weight: 650;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--mute);
+  }
+
+  p { margin: 0 0 1rem; }
+  p:last-child { margin-bottom: 0; }
+
+  /* ---------- figure ---------- */
+
+  figure { margin: 0; }
+  figure a { display: block; }
+  figure img {
+    display: block;
+    width: 100%;
+    height: auto;
+    padding: 1rem;
+    background: #ffffff;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+  }
+  figcaption {
+    margin-top: .7rem;
+    font-size: .85rem;
+    line-height: 1.55;
+    color: var(--mute);
+  }
+
+  /* ---------- stages ---------- */
+
+  .stages { margin: 0; padding: 0; list-style: none; counter-reset: stage; }
+  .stages li {
+    position: relative;
+    margin: 0 0 1.1rem;
+    padding-left: 2.4rem;
+    font-size: .97rem;
+    line-height: 1.6;
+  }
+  .stages li:last-child { margin-bottom: 0; }
+  .stages li::before {
+    counter-increment: stage;
+    content: counter(stage);
+    position: absolute;
+    left: 0;
+    top: .1rem;
+    width: 1.6rem;
+    height: 1.6rem;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    font-size: .78rem;
+    font-weight: 600;
+    color: var(--mute);
+    text-align: center;
+    line-height: 1.55rem;
+  }
+  .stages strong { font-weight: 600; }
+
+  /* ---------- charts ---------- */
+
+  /* Hand-drawn inline SVG: no JS, no image request, and it inherits the
+     palette below so dark mode needs no second asset. */
+  .chart { display: block; width: 100%; height: auto; min-width: 36rem; }
+  .chart text {
+    font-family: inherit;
+    font-size: 10.5px;
+    fill: var(--mute);
+  }
+  .chart .lbl  { text-anchor: end; }
+  .chart .val  { text-anchor: end; font-variant-numeric: tabular-nums; }
+  .chart .tick { text-anchor: middle; font-size: 9.5px; fill: var(--faint); }
+  .chart .hd   { text-anchor: start; font-size: 9.5px; font-weight: 650;
+                 letter-spacing: .08em; fill: var(--mute); }
+  .chart .on   { fill: var(--fg); font-weight: 650; }
+  .chart .bar  { fill: var(--faint); }
+  .chart .bar.ours { fill: var(--accent); }
+  .chart .grid { stroke: var(--line); stroke-width: 1; }
+  .chart .axis { stroke: var(--mute); stroke-width: 1; }
+  .chart .ideal { stroke: var(--accent); stroke-width: 1; stroke-dasharray: 3 3; }
+
+  /* ---------- table ---------- */
+
+  .scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .87rem;
+    font-variant-numeric: tabular-nums;
+  }
+  th, td {
+    padding: .5rem .7rem;
+    text-align: right;
+    white-space: nowrap;
+    border-bottom: 1px solid var(--line);
+  }
+  th:first-child, td:first-child { text-align: left; white-space: normal; }
+  thead th {
+    font-size: .74rem;
+    font-weight: 600;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: var(--mute);
+  }
+  tbody tr.ours { background: var(--panel); }
+  tbody tr.ours td { font-weight: 600; }
+  tr.group th {
+    padding-top: 1.1rem;
+    font-size: .72rem;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--faint);
+    text-align: left;
+    border-bottom: 1px solid var(--line);
+  }
+  .tnote {
+    margin-top: .8rem;
+    font-size: .82rem;
+    line-height: 1.55;
+    color: var(--mute);
+  }
+
+  /* ---------- callout ---------- */
+
+  .callout {
+    padding: 1.1rem 1.25rem;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    font-size: .92rem;
+    line-height: 1.6;
+  }
+  .callout b { font-weight: 650; }
+
+  /* ---------- citation ---------- */
+
+  pre {
+    margin: 0;
+    padding: 1.1rem 1.2rem;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow-x: auto;
+    font: 400 12.5px/1.65 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color: var(--mute);
+  }
+
+  /* ---------- footer ---------- */
+
+  footer {
+    margin-top: 4.5rem;
+    padding-top: 1.6rem;
+    border-top: 1px solid var(--line);
+    font-size: .84rem;
+    line-height: 1.65;
+    color: var(--faint);
+  }
+  footer a { color: var(--mute); }
+</style>
+</head>
+
+<body>
+<main>
+
+  <header>
+    <p class="venue">Marine Vision Workshop &middot; ECCV 2026</p>
+
+    <h1>Bootstrapped Watershed</h1>
+
+    <p class="tagline">Instance segmentation of plankton scans, learned from
+    three annotated crops.</p>
+
+    <p class="authors">Pratham Tatraiya, Torben Globisch, Vivian Fischbach,
+    Stefan Oehmcke</p>
+    <p class="affil">University of Rostock, Germany</p>
+
+    <!--
+      To enable a link: drop its aria-disabled attribute, put the real URL in
+      href, and delete the "after the workshop" suffix from the text.
+
+      PLACEHOLDER: the Paper href needs the OpenReview URL once the paper is
+      posted. It is the only link still disabled.
+    -->
+    <nav class="links">
+      <a href="#" aria-disabled="true">Paper &mdash; OpenReview</a>
+      <a href="https://github.com/ptea08/bw-watershed">Code &mdash; GitHub</a>
+      <a href="https://github.com/ptea08/bw-watershed/blob/main/assets/poster.pdf">Poster &mdash; PDF</a>
+    </nav>
+
+    <p class="release-note">The paper link goes live once the preprint is
+    posted.</p>
+  </header>
+
+  <div class="stats">
+    <div class="stat">
+      <b>3</b>
+      <span>annotated crops of supervision</span>
+    </div>
+    <div class="stat">
+      <b>0.310</b>
+      <span>panoptic quality on held-out crops</span>
+    </div>
+    <div class="stat">
+      <b>1.8&times;</b>
+      <span>the best zero-shot foundation baseline</span>
+    </div>
+  </div>
+
+  <section>
+    <h2>Abstract</h2>
+    <p>ZooScan digitizes whole plankton samples, but extracting individual
+    organisms depends on manually annotated training data &mdash; limiting when a
+    single scan holds hundreds or thousands of touching organisms.</p>
+
+    <p>Bootstrapped Watershed is a few-shot instance-segmentation pipeline.
+    Frozen DINOv3 features train a shallow MLP on three annotated crops, which
+    then pseudo-labels further crops. Those pseudo-labels supervise a U-Net
+    decoder on a frozen ConvNeXt-Small encoder. Full scans are processed as
+    overlapping tiles combined by Gaussian blending, after which boundary
+    removal, pinch-point severing and a distance-transform watershed recover
+    individual instances.</p>
+  </section>
+
+  <section>
+    <h2>Method</h2>
+    <figure>
+      <!-- Linked to itself: the diagram is too wide to read on a phone. -->
+      <a href="pipeline.png"><img src="pipeline.png" width="1225" height="530"
+           alt="Three-stage pipeline: bootstrap pseudo-labels from three
+                annotated crops with frozen DINOv3 features and a shallow MLP;
+                train a U-Net decoder on those pseudo-labels; then tile a full
+                scan and recover instances by boundary removal, pinch-point
+                severing and a distance-transform watershed."></a>
+      <figcaption>The three stages. Only the shallow MLP and the U-Net decoder
+      are trained; the DINOv3 ConvNeXt-Small backbone stays frozen
+      throughout.</figcaption>
+    </figure>
+
+    <ol class="stages" style="margin-top:2rem">
+      <li><strong>Bootstrap.</strong> A shallow MLP over frozen DINOv3 features
+      is trained on the three annotated crops, then scores an unlabeled pool.
+      The 82 most confident crops are kept as pseudo-labels.</li>
+      <li><strong>Semantic segmentation.</strong> Those pseudo-labels supervise
+      a U-Net decoder on the same frozen encoder, predicting foreground and
+      boundary. Checkpoints are selected on boundary IoU &mdash; background IoU
+      is near 1 regardless, so an averaged score hides boundary collapse.</li>
+      <li><strong>Instance extraction.</strong> A full scan is processed as
+      512&nbsp;px tiles with 128&nbsp;px overlap and Gaussian blending. Removing
+      the predicted boundary, severing pinch points and running a
+      distance-transform watershed separates touching organisms.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Results</h2>
+
+    <div class="scroll"><svg class="chart" viewBox="0 0 700 357" role="img" aria-label="Panoptic quality and over-segmentation ratio for every method in the results table. Bootstrapped Watershed reaches the highest panoptic quality at 0.310, and an over-segmentation ratio of 1.76 against an ideal of 1.">
+      <text class="hd" x="175" y="14">PANOPTIC QUALITY</text>
+      <text class="hd" x="450" y="14">OVER-SEGMENTATION RATIO</text>
+      <line class="axis" x1="175.0" y1="32" x2="175.0" y2="342"/>
+      <text class="tick" x="175.0" y="28">0.0</text>
+      <line class="grid" x1="232.1" y1="32" x2="232.1" y2="342"/>
+      <text class="tick" x="232.1" y="28">0.1</text>
+      <line class="grid" x1="289.3" y1="32" x2="289.3" y2="342"/>
+      <text class="tick" x="289.3" y="28">0.2</text>
+      <line class="grid" x1="346.4" y1="32" x2="346.4" y2="342"/>
+      <text class="tick" x="346.4" y="28">0.3</text>
+      <line class="axis" x1="450.0" y1="32" x2="450.0" y2="342"/>
+      <text class="tick" x="450.0" y="28">0</text>
+      <line class="ideal" x1="488.0" y1="32" x2="488.0" y2="342"/>
+      <text class="tick" x="488.0" y="28">1</text>
+      <line class="grid" x1="526.0" y1="32" x2="526.0" y2="342"/>
+      <text class="tick" x="526.0" y="28">2</text>
+      <line class="grid" x1="564.0" y1="32" x2="564.0" y2="342"/>
+      <text class="tick" x="564.0" y="28">3</text>
+      <line class="grid" x1="602.0" y1="32" x2="602.0" y2="342"/>
+      <text class="tick" x="602.0" y="28">4</text>
+      <line class="grid" x1="640.0" y1="32" x2="640.0" y2="342"/>
+      <text class="tick" x="640.0" y="28">5</text>
+      <text class="tick" x="488.0" y="354" style="fill:var(--accent)">ideal</text>
+      <text class="lbl on" x="162" y="51.5">MLP-S → UNet (ours)</text>
+      <rect class="bar ours" x="175" y="41.0" width="177.1" height="14" rx="2"/>
+      <text class="val on" x="410" y="51.5">0.310</text>
+      <rect class="bar ours" x="450" y="41.0" width="66.9" height="14" rx="2"/>
+      <text class="val on" x="690" y="51.5">1.76</text>
+      <text class="lbl" x="162" y="79.5">No bootstrap (3 img)</text>
+      <rect class="bar" x="175" y="69.0" width="156.0" height="14" rx="2"/>
+      <text class="val" x="410" y="79.5">0.273</text>
+      <rect class="bar" x="450" y="69.0" width="63.1" height="14" rx="2"/>
+      <text class="val" x="690" y="79.5">1.66</text>
+      <text class="lbl" x="162" y="107.5">RF → UNet</text>
+      <rect class="bar" x="175" y="97.0" width="150.3" height="14" rx="2"/>
+      <text class="val" x="410" y="107.5">0.263</text>
+      <rect class="bar" x="450" y="97.0" width="57.4" height="14" rx="2"/>
+      <text class="val" x="690" y="107.5">1.51</text>
+      <text class="lbl" x="162" y="135.5">MLP-D → UNet</text>
+      <rect class="bar" x="175" y="125.0" width="141.1" height="14" rx="2"/>
+      <text class="val" x="410" y="135.5">0.247</text>
+      <rect class="bar" x="450" y="125.0" width="64.2" height="14" rx="2"/>
+      <text class="val" x="690" y="135.5">1.69</text>
+      <text class="lbl" x="162" y="163.5">Mask2Former (ZS)</text>
+      <rect class="bar" x="175" y="153.0" width="97.7" height="14" rx="2"/>
+      <text class="val" x="410" y="163.5">0.171</text>
+      <rect class="bar" x="450" y="153.0" width="22.8" height="14" rx="2"/>
+      <text class="val" x="690" y="163.5">0.60</text>
+      <text class="lbl" x="162" y="191.5">CellPose + RF</text>
+      <rect class="bar" x="175" y="181.0" width="58.3" height="14" rx="2"/>
+      <text class="val" x="410" y="191.5">0.102</text>
+      <rect class="bar" x="450" y="181.0" width="32.3" height="14" rx="2"/>
+      <text class="val" x="690" y="191.5">0.85</text>
+      <text class="lbl" x="162" y="219.5">EcoTaxa</text>
+      <rect class="bar" x="175" y="209.0" width="32.0" height="14" rx="2"/>
+      <text class="val" x="410" y="219.5">0.056</text>
+      <rect class="bar" x="450" y="209.0" width="47.1" height="14" rx="2"/>
+      <text class="val" x="690" y="219.5">1.24</text>
+      <text class="lbl" x="162" y="247.5">StarDist + RF</text>
+      <rect class="bar" x="175" y="237.0" width="17.1" height="14" rx="2"/>
+      <text class="val" x="410" y="247.5">0.030</text>
+      <rect class="bar" x="450" y="237.0" width="182.0" height="14" rx="2"/>
+      <text class="val" x="690" y="247.5">4.79</text>
+      <text class="lbl" x="162" y="275.5">StarDist (native)</text>
+      <rect class="bar" x="175" y="265.0" width="1.7" height="14" rx="2"/>
+      <text class="val" x="410" y="275.5">0.003</text>
+      <rect class="bar" x="450" y="265.0" width="108.3" height="14" rx="2"/>
+      <text class="val" x="690" y="275.5">2.85</text>
+      <text class="lbl" x="162" y="303.5">CellPose (native)</text>
+      <text class="val" x="410" y="303.5">0.000</text>
+      <rect class="bar" x="450" y="293.0" width="9.9" height="14" rx="2"/>
+      <text class="val" x="690" y="303.5">0.26</text>
+      <text class="lbl" x="162" y="331.5">Cellpose-SAM (ZS)</text>
+      <text class="val" x="410" y="331.5">0.000</text>
+      <rect class="bar" x="450" y="321.0" width="61.2" height="14" rx="2"/>
+      <text class="val" x="690" y="331.5">1.61</text>
+      </svg></div>
+    <p class="tnote" style="margin-bottom:2rem">Panoptic quality (higher is
+    better) and over-segmentation ratio (closer to 1 is better) for every method
+    in the table below.</p>
+
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Method</th><th>PQ</th><th>Precision</th><th>Recall</th><th>OSR</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="ours">
+            <td>MLP-S &rarr; ConvNeXt-UNet (ours)</td>
+            <td>0.310</td><td>0.368</td><td>0.573</td><td>1.76</td>
+          </tr>
+
+          <tr class="group"><th colspan="5">Ablations</th></tr>
+          <tr><td>U-Net only, no bootstrap (3 img)</td>
+              <td>0.273</td><td>0.355</td><td>0.538</td><td>1.66</td></tr>
+          <tr><td>RF &rarr; ConvNeXt-UNet</td>
+              <td>0.263</td><td>0.304</td><td>0.429</td><td>1.51</td></tr>
+          <tr><td>MLP-D &rarr; ConvNeXt-UNet</td>
+              <td>0.247</td><td>0.310</td><td>0.488</td><td>1.69</td></tr>
+
+          <tr class="group"><th colspan="5">Baselines</th></tr>
+          <tr><td>Mask2Former (Swin-T, zero-shot)</td>
+              <td>0.171</td><td>0.323</td><td>0.202</td><td>0.60</td></tr>
+          <tr><td>CellPose + RF mask</td>
+              <td>0.102</td><td>0.132</td><td>0.128</td><td>0.85</td></tr>
+          <tr><td>EcoTaxa (threshold)</td>
+              <td>0.056</td><td>0.094</td><td>0.106</td><td>1.24</td></tr>
+          <tr><td>StarDist + RF mask</td>
+              <td>0.030</td><td>0.030</td><td>0.133</td><td>4.79</td></tr>
+          <tr><td>StarDist (native, 3-img budget)</td>
+              <td>0.003</td><td>0.004</td><td>0.011</td><td>2.85</td></tr>
+          <tr><td>CellPose (native, 3-img budget)</td>
+              <td>0.000</td><td>0.000</td><td>0.000</td><td>0.26</td></tr>
+          <tr><td>Cellpose-SAM (zero-shot)</td>
+              <td>0.000</td><td>0.000</td><td>0.000</td><td>1.61</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="tnote">One-to-one matching at IoU&nbsp;0.5, macro-averaged over 15
+    held-out crops. OSR is the over-segmentation ratio
+    <em>N</em><sub>pred</sub>&nbsp;/&nbsp;<em>N</em><sub>gt</sub>; ideal is 1.
+    The paper reports the SQ&nbsp;&times;&nbsp;RQ decomposition of PQ.</p>
+  </section>
+
+  <section>
+    <h2>Open problem</h2>
+    <p class="callout"><b>Over-segmentation.</b> At an OSR of 1.76 the method
+    predicts roughly 1.8 instances for every true one, so the gain in recall
+    comes with single organisms being split. Closing that gap without giving
+    back recall is the main thing left to solve.</p>
+  </section>
+
+  <section>
+    <h2>Citation</h2>
+    <pre>@inproceedings{tatraiya2026bootstrapped,
+  title     = {Bootstrapped Watershed: Towards Few-Shot Instance ZooScan Segmentation},
+  author    = {Tatraiya, Pratham and Globisch, Torben and
+               Fischbach, Vivian and Oehmcke, Stefan},
+  booktitle = {European Conference on Computer Vision (ECCV) Workshops ---
+               Marine Vision Workshop},
+  year      = {2026}
+}</pre>
+  </section>
+
+  <footer>
+    Data by the Th&uuml;nen Institute of Baltic Sea Fisheries, not
+    redistributable.<br>
+    Code released under the
+    <a href="https://github.com/ptea08/bw-watershed/blob/main/LICENSE">Apache 2.0 licence</a>.
+  </footer>
+
+</main>
+</body>
+</html>
